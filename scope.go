@@ -1161,6 +1161,11 @@ func (scope *Scope) createJoinTable(field *StructField) {
 }
 
 func (scope *Scope) createTable() *Scope {
+	return scope.createTableWithName(scope.QuotedTableName())
+}
+
+// createTableWithName requires tableNameQuoted to be quoted
+func (scope *Scope) createTableWithName(tableNameQuoted string) *Scope {
 	var tags []string
 	var primaryKeys []string
 	var primaryKeyInColumnType = false
@@ -1189,7 +1194,7 @@ func (scope *Scope) createTable() *Scope {
 		primaryKeyStr = fmt.Sprintf(", PRIMARY KEY (%v)", strings.Join(primaryKeys, ","))
 	}
 
-	scope.Raw(fmt.Sprintf("CREATE TABLE %v (%v %v)%s", scope.QuotedTableName(), strings.Join(tags, ","), primaryKeyStr, scope.getTableOptions())).Exec()
+	scope.Raw(fmt.Sprintf("CREATE TABLE %v (%v %v)%s", tableNameQuoted, strings.Join(tags, ","), primaryKeyStr, scope.getTableOptions())).Exec()
 
 	scope.autoIndex()
 	return scope
@@ -1257,18 +1262,17 @@ func (scope *Scope) removeIndex(indexName string) {
 	scope.Dialect().RemoveIndex(scope.TableName(), indexName)
 }
 
-func (scope *Scope) autoMigrate() *Scope {
-	tableName := scope.TableName()
-	quotedTableName := scope.QuotedTableName()
-
+func (scope *Scope) autoMigrateTable(tableName string) *Scope {
 	if !scope.Dialect().HasTable(tableName) {
-		scope.createTable()
+		scope.createTableWithName(scope.Quote(tableName))
 	} else {
 		for _, field := range scope.GetModelStruct().StructFields {
 			if !scope.Dialect().HasColumn(tableName, field.DBName) {
 				if field.IsNormal {
 					sqlTag := scope.Dialect().DataTypeOf(field)
-					scope.Raw(fmt.Sprintf("ALTER TABLE %v ADD %v %v;", quotedTableName, scope.Quote(field.DBName), sqlTag)).Exec()
+					a := fmt.Sprintf("ALTER TABLE %v ADD %v %v;", scope.Quote(tableName), scope.Quote(field.DBName), sqlTag)
+					fmt.Println(a)
+					scope.Raw(a).Exec()
 				}
 			}
 			scope.createJoinTable(field)
@@ -1276,6 +1280,11 @@ func (scope *Scope) autoMigrate() *Scope {
 		scope.autoIndex()
 	}
 	return scope
+}
+
+func (scope *Scope) autoMigrate() *Scope {
+	tableName := scope.TableName()
+	return scope.autoMigrateTable(tableName)
 }
 
 func (scope *Scope) autoIndex() *Scope {

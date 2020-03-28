@@ -1,3 +1,5 @@
+#!/bin/bash
+
 dialects=("postgres" "mysql" "mssql" "sqlite")
 
 for dialect in "${dialects[@]}" ; do

@@ -686,6 +686,13 @@ func (s *DB) AutoMigrate(values ...interface{}) *DB {
 	return db
 }
 
+// AutoMigrateTable run auto migration for given models, will only add missing fields, won't delete/change current data with a given table name
+func (s *DB) AutoMigrateTable(tableName string, value interface{}) *DB {
+	db := s.Unscoped()
+	db = db.NewScope(value).autoMigrateTable(tableName).db
+	return db
+}
+
 // ModifyColumn modify column to type
 func (s *DB) ModifyColumn(column string, typ string) *DB {
 	scope := s.NewScope(s.Value)
